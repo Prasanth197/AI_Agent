@@ -1,0 +1,30 @@
+# Secrets and local environment files
+.env
+.env.*
+!.env.example
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.pytest_cache/
+.ruff_cache/
+*.egg-info/
+dist/
+build/
+
+# Node
+node_modules/
+frontend/dist/
+
+# Local data and generated artifacts
+data/
+uploads/
+generated/
+
+# Editors and OS
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
