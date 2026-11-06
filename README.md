@@ -92,7 +92,7 @@ The current Phase 1 scaffold is intentionally smaller and will grow with each ph
 ### Roadmap
 
 1. **Architecture and environment (now):** repository scaffold, configuration, local PostgreSQL, health endpoint, setup instructions.
-2. **Resume parser/Profile Agent:** secure PDF/DOCX intake, extraction with provenance, confirmation UI, persisted profile.
+2. **Resume parser/Profile Agent (in progress):** secure PDF/DOCX intake, extraction with provenance, user confirmation, persisted profile.
 3. **Job Search Agent:** provider interfaces and one permitted source, deduplication and job persistence.
 4. **Analysis and matching:** typed requirement extraction, transparent evidence-based score and gap explanation.
 5. **Resume Builder:** verified-fact selection, ATS-conscious DOCX/PDF templates and artifact review.
@@ -136,4 +136,25 @@ Open `http://127.0.0.1:8000/docs` for the API docs and `http://127.0.0.1:8000/he
 - `infra/docker-compose.yml`: local PostgreSQL service and persistent development volume.
 - `.env.example`: safe configuration template; never commit `.env`.
 
-Phase 1 establishes the runnable API shell and local database. It does not yet parse resumes or create database tables; those belong to Phase 2.
+Phase 1 established the runnable API shell and local database.
+
+## Phase 2: resume parsing and Profile Agent
+
+The Phase 2 API adds account registration and password login, JWT bearer authentication, PDF/DOCX text extraction, evidence-backed structured extraction, and a profile review endpoint. Uploaded originals are read in memory and discarded; the extracted draft and a SHA-256 checksum are saved to PostgreSQL. The resume text is sent to the OpenAI API configured by `OPENAI_API_KEY`. Extracted claims stay unconfirmed until the account owner reviews and saves the profile.
+
+After copying `backend/.env.example` to `backend/.env`, set a private random `AUTH_SECRET` (at least 32 characters) and your `OPENAI_API_KEY`. Do not commit `.env`. The example secret and local PostgreSQL password are only for local development.
+
+From the repository root, start PostgreSQL if it is not already running. Then:
+
+```powershell
+cd backend
+uv sync
+Copy-Item .env.example .env
+# Edit .env to set AUTH_SECRET and OPENAI_API_KEY.
+uv run alembic upgrade head
+uv run uvicorn job_agent.main:app --reload
+```
+
+Register with `POST /api/v1/auth/register` using JSON such as `{"email":"you@example.com","password":"a-long-unique-password"}`. Request a bearer token from `POST /api/v1/auth/token` as form data (`username` is the email, plus `password`). In `/docs`, click **Authorize** and enter the token. Upload a PDF or DOCX to `POST /api/v1/profiles/me/resume`. Review the returned draft and save corrected facts with `PUT /api/v1/profiles/me`; `GET /api/v1/profiles/me` returns the saved profile. All three profile routes require a bearer token. Uploads are limited to 8 MB by default and PDFs to 50 pages; scanned PDFs are not OCR'd in this phase.
+
+Tests are under `backend/tests`. Run them from `backend` with `uv run pytest`. This phase creates the `users` and `user_profiles` tables through an Alembic migration; the normalized education, skills, experience, projects, and certifications tables will be introduced when those records need independent querying.
